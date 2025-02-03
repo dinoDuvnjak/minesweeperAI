@@ -16,4 +16,6 @@ class MINESWEEPERAI_API UMinesweeperDeveloperSettings : public UObject
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Config, Category = "MinesweeperDeveloperSettings")
 	FString OpenAi_API_Key = FString("");
+protected:
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 };

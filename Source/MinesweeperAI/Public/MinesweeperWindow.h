@@ -142,7 +142,7 @@ private:
 
 	void SendRequest(const FString& Prombt)
 	{
-		auto* DeveloperSettings = GetDefault<UMinesweeperDeveloperSettings>();
+		auto* DeveloperSettings = GetMutableDefault<UMinesweeperDeveloperSettings>();
 		FString OpenAiAPIKey = FString("");
 		if (DeveloperSettings)
 		{
