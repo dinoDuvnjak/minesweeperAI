@@ -70,8 +70,8 @@ public:
 protected:
 	TSharedPtr<FJsonObject> GenerateMinesweeperGrid(int32 Rows, int32 Cols, int32 Mines);
 	void OnOpenAIRequest(FOpenAiRequestData Request);
-	void OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
-	void OnFinalResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+	void HandleToolsFinishedResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+	void HandleGridFinsihedResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 private:
 	FString CacheOpenAiAPIKey = FString("");
 };

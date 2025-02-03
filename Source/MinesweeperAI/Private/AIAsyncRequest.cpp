@@ -20,14 +20,9 @@ UOpenAIRequest* UOpenAIRequest::OpenAIRequest(FOpenAiRequestData Request)
 void UOpenAIRequest::OnOpenAIRequest(FOpenAiRequestData Request)
 {
 	auto* DeveloperSettings = GetDefault<UMinesweeperDeveloperSettings>();
-	if (DeveloperSettings)
+	if (DeveloperSettings && CacheOpenAiAPIKey.IsEmpty())
 	{
 		CacheOpenAiAPIKey = DeveloperSettings->OpenAi_API_Key;
-		if (CacheOpenAiAPIKey.IsEmpty())
-		{
-			UE_LOG(AI_AsyncRequestLog, Error, TEXT("Missing OpenAI API key in project settings. Please set it in Project Settings -> Plugins -> MinesweeperAI -> OpenAI API Key."));
-			return;
-		}
 	}
 	FString APIUrl = TEXT("https://api.openai.com/v1/chat/completions");
 	TSharedPtr<FJsonObject> RequestPayload = MakeShareable(new FJsonObject);
@@ -90,11 +85,11 @@ void UOpenAIRequest::OnOpenAIRequest(FOpenAiRequestData Request)
 	HTTPRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	HTTPRequest->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *CacheOpenAiAPIKey));
 	HTTPRequest->SetContentAsString(RequestContent);
-	HTTPRequest->OnProcessRequestComplete().BindUObject(this, &UOpenAIRequest::OnHttpResponse);
+	HTTPRequest->OnProcessRequestComplete().BindUObject(this, &UOpenAIRequest::HandleToolsFinishedResponse);
 	HTTPRequest->ProcessRequest();
 }
 
-void UOpenAIRequest::OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+void UOpenAIRequest::HandleToolsFinishedResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {	
 	if (bWasSuccessful && Response.IsValid())
 	{
@@ -137,8 +132,7 @@ void UOpenAIRequest::OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Re
 	                            FJsonSerializer::Serialize(Grid.ToSharedRef(), GridWriter);
 	                            //UE_LOG(AI_AsyncRequestLog, Log, TEXT("Generated Minesweeper Grid: %s"), *GridJson);
 	                            TSharedPtr<FJsonObject> ResponsePayload = MakeShareable(new FJsonObject);
-	                            ResponsePayload->SetStringField(TEXT("model"), JsonResponse->GetStringField(TEXT("model"))); // Attach model info
-	                            // ✅ Include previous messages to maintain conversation history
+	                            ResponsePayload->SetStringField(TEXT("model"), JsonResponse->GetStringField(TEXT("model")));
 	                            TArray<TSharedPtr<FJsonValue>> Messages;
 	                            if (JsonResponse->HasField(TEXT("messages")))
 	                            {
@@ -172,7 +166,7 @@ void UOpenAIRequest::OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Re
 
 	                            TSharedPtr<FJsonObject> FunctionCallObject = MakeShareable(new FJsonObject);
 	                            FunctionCallObject->SetStringField(TEXT("name"), TEXT("generate_minesweeper_grid"));
-	                            FunctionCallObject->SetStringField(TEXT("arguments"), GridJson); // ✅ Convert object to string
+	                            FunctionCallObject->SetStringField(TEXT("arguments"), GridJson);
 	                            FunctionResponseMessage->SetObjectField(TEXT("function_call"), FunctionCallObject);
 	                            Messages.Add(MakeShareable(new FJsonValueObject(FunctionResponseMessage)));
 	                            ResponsePayload->SetArrayField(TEXT("messages"), Messages);
@@ -182,13 +176,13 @@ void UOpenAIRequest::OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Re
 	                            FJsonSerializer::Serialize(ResponsePayload.ToSharedRef(), ResponseWriter);
 
 	                            TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HTTPResponse = FHttpModule::Get().CreateRequest();
-	                            HTTPResponse->SetURL(TEXT("https://api.openai.com/v1/chat/completions")); // OpenAI API URL
+	                            HTTPResponse->SetURL(TEXT("https://api.openai.com/v1/chat/completions"));
 	                            HTTPResponse->SetVerb(TEXT("POST"));
 	                            HTTPResponse->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	                            HTTPResponse->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *CacheOpenAiAPIKey));
 	                            HTTPResponse->SetContentAsString(ResponseContent);
 
-	                            HTTPResponse->OnProcessRequestComplete().BindUObject(this, &UOpenAIRequest::OnFinalResponse);
+	                            HTTPResponse->OnProcessRequestComplete().BindUObject(this, &UOpenAIRequest::HandleGridFinsihedResponse);
 	                            HTTPResponse->ProcessRequest();
 	                        }
 	                        else
@@ -207,7 +201,7 @@ void UOpenAIRequest::OnHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Re
 	}
 }
 
-void UOpenAIRequest::OnFinalResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+void UOpenAIRequest::HandleGridFinsihedResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
 	FBaseResponseData ResponseData;
 	ResponseData.Success = bWasSuccessful;

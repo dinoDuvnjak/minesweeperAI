@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIAsyncRequest.h"
+#include "MinesweeperDeveloperSettings.h"
 #include "Widgets/SCompoundWidget.h"
 
 DEFINE_LOG_CATEGORY_STATIC(MinesweeperWindowLog, Log, All);
@@ -141,6 +142,18 @@ private:
 
 	void SendRequest(const FString& Prombt)
 	{
+		auto* DeveloperSettings = GetDefault<UMinesweeperDeveloperSettings>();
+		FString OpenAiAPIKey = FString("");
+		if (DeveloperSettings)
+		{
+			OpenAiAPIKey = DeveloperSettings->OpenAi_API_Key;
+			if (OpenAiAPIKey.IsEmpty())
+			{
+				UE_LOG(MinesweeperWindowLog, Error, TEXT("Missing OpenAI API key in project settings. Please set it in Project Settings -> Plugins -> MinesweeperAI -> OpenAI API Key."));
+				return;
+			}
+		}
+
 		FOpenAiRequestData RequestData;
 		RequestData.Prombt = Prombt;
 		CachedPrombt = Prombt;
