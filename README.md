@@ -9,7 +9,7 @@
 2. **Copy the plugin folder into your Unreal Engine project's Plugins/ directory**  
 3. **Recompile the project**
 
-###⚙️ Setup API Key
+### ⚙️ Setup API Key
 Go to Edit → Project Settings
 Scroll down to MinesweeperAI (under the Plugins section)
 Enter your OpenAI API Key
